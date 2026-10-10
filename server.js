@@ -82,6 +82,26 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: `API endpoint '${req.originalUrl}' not found` });
 });
 
+// Serve frontend static build if present
+const fs = require('fs');
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+}
+
+// Global SPA fallback for browser navigation routes (e.g. /login, /signin, /signup, /student/dashboard)
+app.get('*', (req, res, next) => {
+  if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/auth')) {
+    return next();
+  }
+  const indexHtml = path.join(frontendDist, 'index.html');
+  if (fs.existsSync(indexHtml)) {
+    return res.sendFile(indexHtml);
+  }
+  // If accessed directly on port 5000 during dev, redirect browser to Vite dev server
+  res.redirect(`http://localhost:5173${req.originalUrl}`);
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
